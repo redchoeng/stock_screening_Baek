@@ -8,3 +8,4 @@ output/
 screener_config.json
 .gh_token.txt
 *.token
+logs/

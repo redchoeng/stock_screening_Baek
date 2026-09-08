@@ -159,6 +159,40 @@ DART API 키 없이 동작한다. 손익계산서/재무상태표는 yfinance(�
 열면 fetch가 막히므로 로컬 확인은 `python -m http.server`로 띄워서 봐야 한다.
 `docs/` 변경을 main에 푸시하면 `.github/workflows/pages.yml`이 자동 배포한다.
 
+## 자동 갱신
+
+데이터는 스크립트를 돌려야만 새로 생긴다. `pages.yml`은 푸시를 받아 **배포만** 하지 데이터를
+만들지 않으므로, 안 돌리면 사이트는 마지막에 푸시한 화면 그대로 남는다.
+
+`auto_update.py`가 두 스크리너를 돌리고 `docs/` 아래 JSON이 실제로 바뀐 경우에만 커밋·푸시한다.
+그 푸시를 Pages 워크플로가 받아 배포하므로, 이 스크립트 하나면 사이트가 최신이 된다.
+
+```bash
+python auto_update.py                # 갱신 후 커밋·푸시
+python auto_update.py --no-push      # 갱신만
+python auto_update.py --only baek    # 한쪽만
+```
+
+결과 JSON 외에 다른 파일이 수정돼 있으면 경고만 남기고 **그 파일들은 커밋하지 않는다**.
+로그는 `logs/auto_update.log`(회전, 커밋 제외).
+
+### 스케줄 등록
+
+```powershell
+powershell -ExecutionPolicy Bypass -File register_task.ps1            # 평일 18:10
+powershell -ExecutionPolicy Bypass -File register_task.ps1 -Time 07:30
+powershell -ExecutionPolicy Bypass -File register_task.ps1 -Remove
+```
+
+18:10인 이유는 국내 장 마감(15:30) 이후라 당일 일봉이 확정되고 미국은 직전 거래일 종가가
+반영되기 때문이다. 스윙 스크리닝이라 하루 한 번이면 충분하다.
+
+**GitHub Actions cron이 아니라 로컬에서 도는 이유:** pykrx가 KRX 서버에 붙는데 해외 러너
+IP는 차단·제한될 수 있다. KOSPI200 구성종목·수급·PER 시계열이 전부 KRX 의존이라 막히면 국내
+데이터가 통째로 빈다. 로컬에는 이미 캐시와 `.env` 자격증명이 있어 더 빠르고, 비밀번호를 밖으로
+올릴 필요도 없다. 대신 PC가 켜져 있고 로그인돼 있어야 한다(git push가 Windows 자격 증명
+관리자의 GitHub 토큰을 쓰기 때문에 "로그인하지 않아도 실행"으로는 등록하지 않는다).
+
 ## 구조
 
 ```
@@ -177,6 +211,9 @@ fundamentals.py       백 프레임: 매출/마진/ROE/PER 수집 (분자)
 baek_scoring.py       백 프레임: 5축 채점 + 실적훼손 게이트
 export_baek.py        백 프레임: 실행 + JSON 추출
 docs/                 GitHub Pages 정적 사이트 (탭 2개)
+
+auto_update.py        두 스크리너 갱신 -> 변경분만 커밋/푸시
+register_task.ps1     Windows 작업 스케줄러 등록/해제
 ```
 
 ## 주의

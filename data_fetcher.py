@@ -48,6 +48,11 @@ _KR_LISTING_CACHE_FILE = META_CACHE_DIR / "kr_listing.csv"
 # 실패하는 네트워크 호출을 반복하지 않도록 프로세스 내에서 한 번만 시도하고 기억해둔다.
 _foreign_data_available: bool | None = None
 
+# KR 상장목록은 종목마다 필요하지만 내용은 하루에 한 번만 바뀐다. 프로세스 안에서 한 번만
+# 만들어 재사용하고, 다운로드가 실패했다는 사실도 기억해 수백 번 재시도하지 않는다.
+_kr_listing_table: pd.DataFrame | None = None
+_kr_listing_download_failed = False
+
 _MAX_RETRIES = 3
 _RETRY_DELAY_SEC = 2
 
@@ -168,30 +173,69 @@ def to_weekly(df: pd.DataFrame) -> pd.DataFrame:
     return weekly.dropna(subset=["Close"])
 
 
+def _read_kr_listing_cache() -> pd.DataFrame:
+    return pd.read_csv(_KR_LISTING_CACHE_FILE, dtype={"Code": str}).set_index("Code")
+
+
 def fetch_kr_listing_table(cache_max_age_hours: float = 24.0) -> pd.DataFrame:
     """
     FinanceDataReader 전체 KRX 상장목록 (Code 인덱스, Name/Market/Marcap 등 컬럼).
     pykrx의 시가총액/지수구성 엔드포인트가 KRX 로그인 없이는 막혀 있어, 그 대체로 쓴다.
     수백 종목을 개별 조회하는 대신 한 번에 통째로 받아서 로컬 캐시해 재사용한다.
+
+    *** 견고성 (2026-09 확인) ***
+    fdr.StockListing("KRX")가 HTTP 404를 내는 일이 있다(업스트림 소스 변경). 이 함수는
+    종목마다 호출되므로, 그대로 두면 실패한 네트워크 요청을 수백 번 반복하면서 국내 종목의
+    시가총액이 통째로 비어 신뢰도 등급과 거래량 임계값이 어긋난다. 그래서:
+      - 결과를 프로세스 안에서 한 번만 만들고 재사용한다 (실패도 기억한다).
+      - 다운로드가 실패하면 만료된 캐시라도 쓴다. 시가총액은 하루 이틀 묵어도 등급 판정에는
+        충분하고, 값이 아예 없는 것보다 낫다.
     """
-    if _KR_LISTING_CACHE_FILE.exists():
-        age_hours = (time.time() - _KR_LISTING_CACHE_FILE.stat().st_mtime) / 3600
-        if age_hours <= cache_max_age_hours:
+    global _kr_listing_table, _kr_listing_download_failed
+    if _kr_listing_table is not None:
+        return _kr_listing_table
+
+    cache_exists = _KR_LISTING_CACHE_FILE.exists()
+    age_hours = (
+        (time.time() - _KR_LISTING_CACHE_FILE.stat().st_mtime) / 3600 if cache_exists else None
+    )
+
+    if cache_exists and age_hours <= cache_max_age_hours:
+        try:
+            _kr_listing_table = _read_kr_listing_cache()
+            return _kr_listing_table
+        except Exception:
+            logger.warning("KR 상장목록 캐시 손상, 재다운로드")
+
+    if not _kr_listing_download_failed:
+        try:
+            import FinanceDataReader as fdr
+
+            df = fdr.StockListing("KRX")
+            df["Code"] = df["Code"].astype(str).str.zfill(6)
+            df = df.set_index("Code")
             try:
-                return pd.read_csv(_KR_LISTING_CACHE_FILE, dtype={"Code": str}).set_index("Code")
+                df.to_csv(_KR_LISTING_CACHE_FILE)
             except Exception:
-                logger.warning("KR 상장목록 캐시 손상, 재다운로드")
+                logger.warning("KR 상장목록 캐시 저장 실패 (무시하고 진행)")
+            _kr_listing_table = df
+            return _kr_listing_table
+        except Exception:
+            _kr_listing_download_failed = True
+            logger.warning("KR 상장목록 다운로드 실패 (이후 재시도하지 않는다)", exc_info=True)
 
-    import FinanceDataReader as fdr
+    if cache_exists:
+        try:
+            _kr_listing_table = _read_kr_listing_cache()
+            logger.warning(
+                "KR 상장목록: 만료된 캐시(%.1f시간 전)를 대신 쓴다 — 시가총액이 최신이 아니다",
+                age_hours,
+            )
+            return _kr_listing_table
+        except Exception:
+            logger.warning("KR 상장목록 캐시도 읽지 못했다", exc_info=True)
 
-    df = fdr.StockListing("KRX")
-    df["Code"] = df["Code"].astype(str).str.zfill(6)
-    df = df.set_index("Code")
-    try:
-        df.to_csv(_KR_LISTING_CACHE_FILE)
-    except Exception:
-        logger.warning("KR 상장목록 캐시 저장 실패 (무시하고 진행)")
-    return df
+    raise RuntimeError("KR 상장목록을 다운로드도 캐시도 하지 못했습니다")
 
 
 def fetch_market_cap(ticker: str, market: str) -> float | None:
