@@ -1,0 +1,10 @@
+pandas>=2.0
+numpy>=1.24
+yfinance>=0.2.40
+pykrx>=1.0.45
+finance-datareader>=0.9.90
+mplfinance>=0.12.10
+openpyxl>=3.1
+requests>=2.31
+lxml>=5.0
+python-dotenv>=1.0
