@@ -7,10 +7,18 @@
 
 데이터 소스 (DART API 키 없이 동작):
   - 손익계산서/재무상태표: yfinance (미국은 물론 한국 종목도 005930.KS 형태로 제공된다)
-  - 한국 PER 시계열: pykrx get_market_fundamental_by_date — 자기 PER 밴드 백분위 산출용.
-    yfinance는 한국 종목의 trailingPE를 None으로 주는 경우가 많아 pykrx로 보완한다.
-  - 미국 PER: yfinance trailingPE / forwardPE. 과거 PER 시계열은 무료로 구하기 어려워
-    밴드 백분위는 한국 종목만 산출된다(미국은 시장 중앙값 대비로 baek_scoring에서 평가).
+  - 미국 PER: yfinance trailingPE / forwardPE.
+  - 한국 PER: 토스증권 Open API가 PER을 제공하지 않으므로(스펙 전문에 PER/EPS/BPS가 없다)
+    시가총액 ÷ 순이익(TTM)으로 직접 계산한다. 시가총액은 토스(발행주식수 × 현재가),
+    순이익은 yfinance 재무제표. 주당 값으로 나누지 않고 총액끼리 나눠 주식수 기준이
+    어긋날 여지를 없앴다.
+  - pykrx PER 시계열(KRX_ID/KRX_PW 필요)은 '직전 확정 연간 EPS' 기준이라 TTM과 기준이
+    달라 점수에 쓰지 않는다. 실적이 급증하는 국면에서 실제보다 몇 배 비싸 보이기 때문이다
+    (삼성전자 pykrx 40.8 vs TTM 10.5). 자기 5년 밴드가 어디쯤인지 보여주는 참고 정보로만
+    per_trailing / per_band에 남긴다. 국내 종목당 12초쯤 드니 급하면 config에서 끌 수 있다.
+
+밸류에이션 축 점수는 두 시장 모두 '같은 시장 구성종목 PER 중앙값 대비'로 매긴다 —
+국가 간 PER을 직접 비교하지 않는다는 원칙과, 두 시장의 PER 기준(TTM)을 맞춘 결과다.
 
 산출값의 핵심은 절대 수준이 아니라 기울기다. 애널리스트는 실적의 절대 금액이 아니라
 증가율의 각도(미분)를 보는 직업이고, 증가율이 둔화되기 시작하면 실적이 좋아도 주가는
@@ -39,6 +47,9 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 _KR_LISTING_CACHE = Path(__file__).parent / "cache" / "meta" / "kr_listing.csv"
 
 _kr_market_map: dict[str, str] | None = None
+
+# pykrx PER 시계열이 한 번이라도 실패하면(대개 KRX 로그인 없음) 이후 종목은 건너뛴다.
+_kr_per_unavailable = False
 
 # yfinance 재무제표 행 라벨은 종목마다 조금씩 다르다. 우선순위 순으로 찾는다.
 _REVENUE_ROWS = ("Total Revenue", "Operating Revenue")
@@ -81,11 +92,21 @@ def kr_yf_symbol(ticker: str) -> str:
     global _kr_market_map
     if _kr_market_map is None:
         _kr_market_map = {}
+        # 1순위: 토스 시가총액 표 (KOSPI/KOSDAQ 구분이 최신이고 커버리지도 넓다).
         try:
-            listing = pd.read_csv(_KR_LISTING_CACHE, dtype={"Code": str})
-            _kr_market_map = dict(zip(listing["Code"], listing["Market"]))
+            import kr_source
+
+            table = kr_source.cap_table()
+            if table is not None:
+                _kr_market_map = dict(zip(table["Code"].astype(str), table["Market"]))
         except Exception:
-            logger.warning("KR 상장목록 캐시를 못 읽어 전 종목 .KS로 가정한다")
+            logger.debug("토스 시장 구분 조회 실패", exc_info=True)
+        if not _kr_market_map:
+            try:
+                listing = pd.read_csv(_KR_LISTING_CACHE, dtype={"Code": str})
+                _kr_market_map = dict(zip(listing["Code"], listing["Market"]))
+            except Exception:
+                logger.warning("KR 상장목록을 못 읽어 전 종목 .KS로 가정한다")
     return f"{ticker}.KQ" if _kr_market_map.get(ticker) == "KOSDAQ" else f"{ticker}.KS"
 
 
@@ -176,7 +197,14 @@ def _period_metrics(rev: pd.Series | None, op: pd.Series | None, quarterly: bool
 
 
 def _kr_per_series(ticker: str, years: int) -> pd.Series | None:
-    """pykrx 일별 PER 시계열. KRX 로그인이 없으면 빈 값이 오므로 그때는 None."""
+    """pykrx 일별 PER 시계열. KRX 로그인이 없으면 빈 값이 오므로 그때는 None.
+
+    로그인 자격증명을 빼고 토스로 옮긴 뒤에는 이 경로가 종목마다 실패한다. 한 번 실패하면
+    이후에는 아예 시도하지 않는다 — 100종목마다 같은 실패를 반복할 이유가 없다.
+    """
+    global _kr_per_unavailable
+    if _kr_per_unavailable:
+        return None
     try:
         from pykrx import stock
 
@@ -186,13 +214,39 @@ def _kr_per_series(ticker: str, years: int) -> pd.Series | None:
             start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), ticker
         )
         if df is None or df.empty or "PER" not in df.columns:
+            _kr_per_unavailable = True
             return None
         per = pd.to_numeric(df["PER"], errors="coerce")
         per = per[per > 0].dropna()  # 적자기업은 PER이 0으로 찍힌다 -> 밴드 계산에서 제외
         return per if len(per) >= 60 else None
     except Exception:
-        logger.debug("pykrx PER 시계열 실패: %s", ticker, exc_info=True)
+        _kr_per_unavailable = True
+        logger.info("pykrx PER 시계열을 쓸 수 없다 — 이후 국내 PER은 시총/순이익으로 계산한다")
         return None
+
+
+def _computed_per(ticker: str, q_net: pd.Series | None, a_net: pd.Series | None) -> float | None:
+    """국내 종목 PER = 시가총액 ÷ 순이익(TTM).
+
+    토스증권 API는 PER을 주지 않는다. 시가총액은 토스(발행주식수 × 현재가), 순이익은
+    yfinance 재무제표에서 가져와 직접 나눈다. 적자(순이익 ≤ 0)면 PER 자체가 의미가 없으므로
+    None을 돌려주고, 밸류에이션 축은 0점 처리된다.
+    """
+    net_ttm = _ttm(q_net)
+    if net_ttm is None and a_net is not None and len(a_net):
+        net_ttm = float(a_net.iloc[-1])
+    if net_ttm is None or net_ttm <= 0:
+        return None
+    try:
+        import kr_source
+
+        cap = kr_source.fetch_market_cap(ticker)
+    except Exception:
+        logger.debug("시가총액 조회 실패로 PER 계산 생략: %s", ticker, exc_info=True)
+        return None
+    if not cap or cap <= 0:
+        return None
+    return cap / net_ttm
 
 
 def fetch_fundamentals(
@@ -224,6 +278,7 @@ def fetch_fundamentals(
 
     q_rev = _pick_row(q_income, _REVENUE_ROWS)
     q_op = _pick_row(q_income, _OP_INCOME_ROWS)
+    q_net = _pick_row(q_income, _NET_INCOME_ROWS)
     a_rev = _pick_row(a_income, _REVENUE_ROWS)
     a_op = _pick_row(a_income, _OP_INCOME_ROWS)
     a_net = _pick_row(a_income, _NET_INCOME_ROWS)
@@ -283,11 +338,28 @@ def fetch_fundamentals(
     per = info.get("trailingPE")
     forward_per = info.get("forwardPE")
     per_percentile = None
+    per_source = "yfinance(TTM)"
+    per_trailing = per_trailing_pct = per_band_low = per_band_high = None
     if market == "KR":
-        per_series = _kr_per_series(ticker, cfg.per_band_years)
+        # 1순위는 TTM 계산이다. pykrx PER은 '직전 확정 연간 EPS' 기준이라 실적이 급증하는
+        # 국면에서 실제보다 몇 배 비싸 보인다(삼성전자 41.3 vs TTM 10.6). 백 프레임이 찾는 게
+        # 바로 그런 종목이라 그대로 쓰면 원하는 종목을 밸류에이션 축에서 감점하게 된다.
+        # 미국 쪽 yfinance trailingPE도 TTM이므로, TTM으로 맞춰야 두 시장의 기준이 같아진다.
+        computed = _computed_per(ticker, q_net, a_net)
+        if computed is not None:
+            per, per_source = computed, "계산(시총/순이익 TTM)"
+
+        # pykrx 시계열은 자기 5년 밴드를 알려주지만 기준이 달라 점수에는 쓰지 않는다.
+        # 밴드 백분위를 TTM PER에 갖다 붙이면 통계적으로 말이 안 되기 때문에, 참고 정보로만 남긴다.
+        per_series = (
+            _kr_per_series(ticker, cfg.per_band_years) if cfg.fetch_pykrx_per_band else None
+        )
         if per_series is not None and len(per_series):
-            per = float(per_series.iloc[-1])
-            per_percentile = float((per_series <= per).mean() * 100)
+            per_trailing = float(per_series.iloc[-1])
+            per_trailing_pct = float((per_series <= per_trailing).mean() * 100)
+            per_band_low, per_band_high = float(per_series.min()), float(per_series.max())
+            if per is None:  # 적자 등으로 TTM 계산이 안 되면 그거라도 쓴다
+                per, per_source = per_trailing, "pykrx(연간EPS 기준)"
     per = float(per) if isinstance(per, (int, float)) and per and per > 0 else None
     forward_per = (
         float(forward_per) if isinstance(forward_per, (int, float)) and forward_per and forward_per > 0 else None
@@ -319,6 +391,11 @@ def fetch_fundamentals(
         "per": None if per is None else round(per, 2),
         "forward_per": None if forward_per is None else round(forward_per, 2),
         "per_percentile": None if per_percentile is None else round(per_percentile, 1),
+        "per_source": per_source,
+        # 아래 셋은 참고용(점수에 반영하지 않는다) — pykrx 연간EPS 기준 PER과 그 5년 밴드.
+        "per_trailing": None if per_trailing is None else round(per_trailing, 2),
+        "per_trailing_percentile": None if per_trailing_pct is None else round(per_trailing_pct, 1),
+        "per_band": None if per_band_low is None else [round(per_band_low, 1), round(per_band_high, 1)],
         "earnings_deteriorating": deteriorating,
         "has_growth_data": rev_yoy is not None,
     }

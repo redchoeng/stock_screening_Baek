@@ -175,6 +175,12 @@ class FundamentalConfig:
     it_sectors: tuple = ("Technology", "Communication Services")
 
     per_band_years: int = 5          # PER 밴드 백분위 산출 구간
+    # 국내 PER 값 자체는 시가총액 ÷ 순이익(TTM)으로 계산한다 — 미국 yfinance trailingPE와
+    # 같은 기준이라 두 시장을 나란히 볼 수 있다. pykrx PER 시계열은 '직전 확정 연간 EPS'
+    # 기준이라 기준이 달라 점수에는 쓰지 않고 참고용 5년 밴드로만 붙인다.
+    # 이 참고 밴드 하나에 국내 종목당 12초쯤 든다. 콜드런을 빨리 끝내야 하면 False로 끄면 된다
+    # (캐시가 살아 있는 평소 실행에는 영향이 없다).
+    fetch_pykrx_per_band: bool = True
     min_quarters: int = 5            # 매출 YoY 계산에 필요한 최소 분기 수
     cache_hours: float = 168.0       # 재무는 분기 단위로만 바뀐다 -> 1주일
 

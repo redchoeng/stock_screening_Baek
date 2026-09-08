@@ -121,6 +121,14 @@ def _fetch_ohlcv_us_raw(ticker: str, days: int) -> pd.DataFrame:
 
 
 def _fetch_ohlcv_kr_raw(ticker: str, days: int) -> pd.DataFrame:
+    # 토스증권 Open API가 1순위. 공식 REST라 막힐 일이 없고 수정주가까지 적용된다.
+    # 자격증명이 없거나 실패하면 아래 pykrx 경로로 그대로 떨어진다.
+    import kr_source
+
+    toss_df = kr_source.fetch_ohlcv(ticker, days)
+    if toss_df is not None and not toss_df.empty:
+        return toss_df[_STD_COLS].dropna(subset=["Close", "High", "Low"])
+
     from pykrx import stock
 
     todate = dt.date.today()
@@ -242,6 +250,13 @@ def fetch_market_cap(ticker: str, market: str) -> float | None:
     """최신 시가총액. KR은 FinanceDataReader 상장목록(로그인 불필요), US는 yfinance."""
     try:
         if market == "KR":
+            # 1순위: 토스 (발행주식수 × 현재가). 전 종목을 한 번에 받아 캐시하므로 종목당 비용이 없다.
+            import kr_source
+
+            cap = kr_source.fetch_market_cap(ticker)
+            if cap:
+                return cap
+
             try:
                 table = fetch_kr_listing_table()
                 if ticker in table.index:
@@ -284,8 +299,19 @@ def fetch_investor_net_buy_series(ticker: str, days: int = 40) -> dict[str, pd.S
     이 엔드포인트가 KRX_ID/KRX_PW 로그인 없이 막혀 있는 게 확인되면(모듈 상단 설명 참고),
     이후 호출은 네트워크 요청 없이 바로 None을 반환한다 — 수백 종목마다 매번 실패하는
     요청을 반복하지 않기 위함. .env에 KRX_ID/KRX_PW를 채워두면 정상 동작한다.
+
+    1순위는 토스증권 Open API다. 로그인 없이 공식 REST로 받을 수 있고 기관 세부 분류까지
+    나온다. 다만 토스는 순매수 '거래량(주)'을, pykrx는 '거래대금'을 준다 — 연속 순매수
+    일수는 부호만 보므로 판정 결과는 같지만 값의 단위가 다르다.
     """
     global _foreign_data_available
+
+    import kr_source
+
+    toss_series = kr_source.fetch_investor_series(ticker, days=max(days, 40))
+    if toss_series:
+        return toss_series
+
     if _foreign_data_available is False:
         return None
 

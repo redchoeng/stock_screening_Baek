@@ -90,7 +90,16 @@ def fetch_kr_universe(index_name: str = "KOSPI200", fallback_top_n: int = 200) -
     2차(폴백): 로그인 없이 접근 가능한 FinanceDataReader 상장목록에서 KOSPI 시가총액 상위
          fallback_top_n개를 근사 유니버스로 사용한다. 정확한 KOSPI200 구성종목은 아니지만,
          "지수/대형주 위주"라는 목적에는 부합한다. 이 경우 index_member에 "근사" 표시를 남긴다.
+
+    *** 토스증권 Open API로 옮긴 뒤 ***
+    구성종목은 각 소스가 제일 잘하는 걸 시킨다:
+      - 지수 구성종목 자체는 pykrx만 가진다 (토스 API에는 없다). 그래서 여기가 1차다.
+      - 종목명은 토스 시가총액 표에서 가져온다. pykrx로 이름을 받으면 종목마다 한 번씩
+        네트워크를 타서 200종목이면 200번을 부르게 되는데, 토스 표에는 이미 다 들어 있다.
+      - pykrx가 실패하면(로그인 없음 등) 토스의 전체 종목 + 시총 상위 N개로 근사한다.
     """
+    import kr_source
+
     from pykrx import stock
 
     index_ticker_map = {
@@ -109,17 +118,35 @@ def fetch_kr_universe(index_name: str = "KOSPI200", fallback_top_n: int = 200) -
         logger.warning("pykrx 지수 구성종목 조회 실패", exc_info=True)
 
     if tickers:
+        # 종목명은 토스 표에서 한 번에 뽑는다 (없으면 pykrx로 하나씩).
+        name_map: dict[str, str] = {}
+        table = kr_source.cap_table()
+        if table is not None:
+            name_map = dict(zip(table["Code"].astype(str), table["Name"].astype(str)))
+
         rows = []
         for t in tickers:
-            try:
-                name = stock.get_market_ticker_name(t)
-            except Exception:
-                name = t
+            name = name_map.get(t)
+            if not name:
+                try:
+                    name = stock.get_market_ticker_name(t)
+                except Exception:
+                    name = t
             rows.append({"ticker": t, "name": name, "market": "KR", "index_member": {index_name}})
+        logger.info("%s 구성종목 %d개 (pykrx 지수 + 토스 종목명)", index_name, len(rows))
         return rows
 
+    market = "KOSDAQ" if index_name == "KOSDAQ150" else "KOSPI"
+    toss_rows = kr_source.fetch_universe(fallback_top_n, market=market)
+    if toss_rows:
+        logger.warning(
+            "%s 구성종목을 pykrx로 가져오지 못해 토스 시가총액 상위 %d종목으로 대체합니다.",
+            index_name, len(toss_rows),
+        )
+        return toss_rows
+
     logger.warning(
-        "%s 구성종목을 pykrx로 가져오지 못했습니다 (KRX_ID/KRX_PW 로그인 필요할 수 있음). "
+        "%s 구성종목을 pykrx로도 토스로도 가져오지 못했습니다. "
         "FinanceDataReader 시가총액 상위 %d개로 대체합니다.",
         index_name, fallback_top_n,
     )

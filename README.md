@@ -17,16 +17,29 @@
 pip install -r requirements.txt
 ```
 
-`.env.example`을 `.env`로 복사하고 KRX 계정(mykrx.co.kr)을 채운다:
+`.env.example`을 `.env`로 복사하고 채운다.
 
 ```
-KRX_ID=your_id
+TOSS_CLIENT_ID=...        # 토스증권 WTS > 설정 > Open API (호출 IP 등록 필요)
+TOSS_CLIENT_SECRET=...
+KRX_ID=your_id            # 선택 (mykrx.co.kr)
 KRX_PW=your_password
 ```
 
-KRX 로그인이 없어도 동작하지만, 다음 기능이 제한된다:
-- KOSPI200 정확한 구성종목 → FinanceDataReader 시가총액 상위 200종목 근사치로 대체
-- 외국인/기관 수급 데이터 → 수집 불가, 해당 항목 없이 채점
+**국내 데이터는 토스증권 Open API가 기본 경로다.** pykrx는 KRX 웹사이트를 스크래핑하는
+비공식 경로라 언제 막혀도 이상하지 않고, 해외 IP에서는 실제로 차단된다. 토스는 공식 REST라
+로그인 없이 안정적이고 훨씬 빠르다(반등 스크리너 전체가 20분 → 3분).
+
+| 데이터 | 1순위 | 폴백 |
+|---|---|---|
+| 국내 일봉 OHLCV | 토스 `/api/v1/candles` (수정주가) | pykrx |
+| 시가총액 | 토스 발행주식수 × 현재가 | FDR 상장목록 → pykrx |
+| 외국인/기관 수급 | 토스 `/stocks/{symbol}/investor-trading` | pykrx (KRX 로그인 필요) |
+| 종목명 | 토스 시가총액 표 | pykrx |
+| KOSPI200 구성종목 | pykrx (토스에 없음) | 토스 시총 상위 N 근사 |
+
+KRX 로그인이 없어도 전부 동작한다. 없으면 KOSPI200이 시총 상위 200 근사가 되고,
+참고용 PER 5년 밴드가 빠질 뿐이다.
 
 ## 사용법
 
@@ -143,6 +156,14 @@ DART API 키 없이 동작한다. 손익계산서/재무상태표는 yfinance(�
 - `universe.py`의 미국 유니버스는 티커 알파벳순이라 앞에서 N개를 자르면 A~B로만 채워진다.
   그래서 백 프레임은 자르기 전에 **시가총액 순으로 재정렬**한다(미국은 slickcharts S&P500
   비중, 국내는 FDR 상장목록 시총). 기존 반등 스크리너의 유니버스 구성은 건드리지 않았다.
+- **국내 PER은 시가총액 ÷ 순이익(TTM)으로 직접 계산한다.** 토스 API는 PER을 제공하지 않고
+  (스펙 전문에 PER/EPS/BPS가 없다), pykrx PER은 '직전 확정 연간 EPS' 기준이라 실적이 급증하는
+  국면에서 실제보다 몇 배 비싸 보인다 — 삼성전자 pykrx 40.8 vs TTM 10.5. 백 프레임이 찾는 게
+  바로 그런 종목이라 그대로 쓰면 원하는 종목을 밸류에이션 축에서 감점하게 된다. 미국 yfinance
+  `trailingPE`도 TTM이라 이렇게 맞춰야 두 시장의 기준이 같아진다. pykrx 밴드는 참고 정보로만
+  남기며(`config.baek.fundamental.fetch_pykrx_per_band`), 국내 종목당 12초쯤 드니 콜드런을
+  빨리 끝내야 하면 끄면 된다.
+- 밸류에이션 축 점수는 두 시장 모두 '같은 시장 구성종목 PER 중앙값 대비'로 매긴다.
 - **어록에 나온 수치(19.9배, 4.5%, 8~10배 등)는 방송 시점 스냅샷이므로 코드에 박지 않았다.**
   전부 `config.py`의 `BaekConfig` 파라미터이며, 지수 PER 밴드는 실제 데이터로 계산한다.
 
@@ -211,6 +232,9 @@ fundamentals.py       백 프레임: 매출/마진/ROE/PER 수집 (분자)
 baek_scoring.py       백 프레임: 5축 채점 + 실적훼손 게이트
 export_baek.py        백 프레임: 실행 + JSON 추출
 docs/                 GitHub Pages 정적 사이트 (탭 2개)
+
+toss_api.py           토스증권 Open API 클라이언트 (OAuth2, 레이트리밋, 페이지네이션)
+kr_source.py          국내 데이터 공급자 (토스 우선, 실패 시 pykrx 폴백)
 
 auto_update.py        두 스크리너 갱신 -> 변경분만 커밋/푸시
 register_task.ps1     Windows 작업 스케줄러 등록/해제

@@ -1510,9 +1510,15 @@ function initDashboard(raw) {
       "</div>" +
       '<div class="kv-grid">' + dupont + "</div>" +
       '<ul class="note-list">' + (r.notes || []).map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul>" +
+      (f.per_trailing != null && f.per_band
+        ? '<div class="note-list" style="list-style:none;padding-left:0"><li>참고 — 연간EPS 기준 PER ' +
+          num(f.per_trailing, 1) + ' (5년 밴드 ' + num(f.per_band[0], 1) + "~" + num(f.per_band[1], 1) +
+          ' 중 ' + num(f.per_trailing_percentile, 0) + '%). 기준이 달라 점수에는 쓰지 않습니다.</li></div>'
+        : "") +
       '<div class="name-sub" style="font-size:11px">기준: 매출 ' + esc(f.basis || "—") +
         (f.acceleration_basis ? " · 기울기 " + esc(f.acceleration_basis) : "") +
-        (f.margin_basis ? " · 마진 " + esc(f.margin_basis) : "") + "</div>";
+        (f.margin_basis ? " · 마진 " + esc(f.margin_basis) : "") +
+        (f.per_source ? " · PER " + esc(f.per_source) : "") + "</div>";
   }
 
   function renderAll() {

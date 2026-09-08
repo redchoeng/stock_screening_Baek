@@ -59,6 +59,12 @@ def _us_size_rank() -> dict[str, float]:
 
 
 def _kr_size_rank() -> dict[str, float]:
+    """국내 시총 랭킹. 토스(발행주식수 × 현재가)를 우선 쓰고, 없으면 FDR 상장목록 캐시."""
+    import kr_source
+
+    table = kr_source.cap_table()
+    if table is not None and "Marcap" in table.columns:
+        return {str(c): float(m) for c, m in zip(table["Code"], table["Marcap"]) if pd.notna(m)}
     listing = pd.read_csv(_KR_LISTING_CACHE, dtype={"Code": str})
     return {str(c): float(m) for c, m in zip(listing["Code"], listing["Marcap"]) if pd.notna(m)}
 
@@ -112,7 +118,9 @@ def fetch_index_valuation() -> dict:
                     "source": "pykrx 지수 PER 5년",
                 }
     except Exception:
-        logger.warning("KOSPI200 지수 PER 수집 실패", exc_info=True)
+        # 토스증권 API는 지수 PER을 제공하지 않고, pykrx 경로는 KRX 로그인이 있어야 한다.
+        # 없으면 지수 밴드 카드만 빠지고 시장 PER 중앙값은 그대로 나온다.
+        logger.info("KOSPI200 지수 PER을 받지 못했다 (KRX 로그인 필요) — 지수 밴드는 생략한다")
     return result
 
 
