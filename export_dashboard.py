@@ -3,7 +3,7 @@ HTML 대시보드 시각화용 데이터 export.
 
 main.py의 스크리닝 로직(run)을 그대로 재사용하되, KR/US 유니버스 크기를 각각 따로 정해서
 균형 있게 섞고, 점수 상위 종목들은 최근 지표 시계열(종가/스토캐/윌리엄스%R)까지 추가로 뽑아
-JSON 하나로 저장한다. 이 JSON을 별도의 정적 HTML(artifact)에 그대로 임베드해서 쓴다.
+JSON 하나로 저장한다. docs/index.html이 이 JSON을 읽어 대시보드를 그린다.
 """
 from __future__ import annotations
 
@@ -25,6 +25,9 @@ from universe import build_universe
 logger = logging.getLogger(__name__)
 
 OUT_FILE = Path(__file__).parent / "output" / "dashboard_data.json"
+# GitHub Pages로 서비스되는 정적 사이트(docs/)가 읽어가는 사본.
+# docs/index.html이 같은 경로의 data.json을 fetch하므로 여기에도 같이 써준다.
+SITE_FILE = Path(__file__).parent / "docs" / "data.json"
 
 
 def build_balanced_universe(cfg, kr_limit: int = 200, us_limit: int = 150) -> list[dict]:
@@ -97,12 +100,11 @@ def main() -> int:
         "us_count": sum(1 for r in results if r["market"] == "US"),
     }
 
-    OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    OUT_FILE.write_text(
-        json.dumps({"summary": summary, "results": results, "series": series}, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    logger.info("저장 완료: %s", OUT_FILE)
+    payload = json.dumps({"summary": summary, "results": results, "series": series}, ensure_ascii=False)
+    for path in (OUT_FILE, SITE_FILE):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+        logger.info("저장 완료: %s", path)
     return 0
 
 
