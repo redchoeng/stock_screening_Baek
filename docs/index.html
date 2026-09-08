@@ -424,6 +424,108 @@
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
   }
+
+  /* ---------- 탭 ---------- */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+  .tab {
+    appearance: none; border: none; background: transparent; cursor: pointer;
+    font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text-muted);
+    padding: 10px 16px; border-radius: 8px 8px 0 0;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  }
+  .tab:hover { color: var(--text-secondary); background: var(--surface-2); }
+  .tab.active { color: var(--accent-strong); border-bottom-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .panel { display: flex; flex-direction: column; gap: 20px; }
+
+  /* ---------- 상태색: 반드시 텍스트 라벨과 함께 쓴다 (색만으로 구분하지 않는다) ---------- */
+  :root { --status-good: #0c7a34; --status-good-soft: rgba(12,122,52,0.12);
+          --status-watch: #a8760a; --status-watch-soft: rgba(168,118,10,0.12);
+          --status-off: #8b8ba0; --status-off-soft: rgba(139,139,160,0.12); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --status-good: #43c46a; --status-good-soft: rgba(67,196,106,0.16);
+      --status-watch: #e3a53d; --status-watch-soft: rgba(227,165,61,0.16);
+      --status-off: #7d7e92; --status-off-soft: rgba(125,126,146,0.16);
+    }
+  }
+  :root[data-theme="dark"] {
+    --status-good: #43c46a; --status-good-soft: rgba(67,196,106,0.16);
+    --status-watch: #e3a53d; --status-watch-soft: rgba(227,165,61,0.16);
+    --status-off: #7d7e92; --status-off-soft: rgba(125,126,146,0.16);
+  }
+  .verdict-pill {
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px;
+  }
+  .verdict-pill.v-cand { background: var(--status-good-soft); color: var(--status-good); }
+  .verdict-pill.v-watch { background: var(--status-watch-soft); color: var(--status-watch); }
+  .verdict-pill.v-out { background: var(--status-off-soft); color: var(--status-off); }
+
+  /* ---------- 레짐 배너 ---------- */
+  .regime-banner {
+    display: grid; grid-template-columns: minmax(210px, 260px) 1fr; gap: 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--status-off); border-radius: 12px; padding: 16px 18px;
+  }
+  .regime-banner.risk-off { border-left-color: var(--warn); }
+  .regime-banner.neutral { border-left-color: var(--status-watch); }
+  .regime-banner.risk-on { border-left-color: var(--status-good); }
+  .regime-head .regime-eyebrow {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .regime-head .regime-name { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .regime-banner.risk-off .regime-name { color: var(--warn); }
+  .regime-banner.neutral .regime-name { color: var(--status-watch); }
+  .regime-banner.risk-on .regime-name { color: var(--status-good); }
+  .regime-head .regime-mult { font-size: 11.5px; color: var(--text-muted); margin-top: 4px; }
+  .regime-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+  .regime-metric { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+  .regime-metric .rm-label { font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+    text-transform: uppercase; color: var(--text-muted); }
+  .regime-metric .rm-value { font-size: 16px; font-weight: 600; margin-top: 2px; }
+  .regime-metric .rm-sub { font-size: 10.5px; color: var(--text-muted); }
+  .regime-metric.over .rm-value { color: var(--warn); }
+  .regime-notes { grid-column: 1 / -1; margin: 0; padding-left: 18px;
+    font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 3px; }
+  @media (max-width: 760px) { .regime-banner { grid-template-columns: 1fr; } }
+
+  /* ---------- PER 밴드 (단일 값 + 범위) ---------- */
+  .band-card { display: flex; gap: 20px; flex-wrap: wrap;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; }
+  .band-item { flex: 1 1 260px; }
+  .band-item .band-title { font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--text-muted); }
+  .band-item .band-value { font-size: 18px; font-weight: 600; margin: 2px 0 8px; }
+  .band-track { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); }
+  .band-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--accent-soft-strong); }
+  .band-marker { position: absolute; top: -3px; width: 2px; height: 14px; border-radius: 1px;
+    background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+  .band-scale { display: flex; justify-content: space-between; font-size: 10.5px;
+    color: var(--text-muted); margin-top: 5px; }
+
+  /* ---------- 5축 점수 분해 ---------- */
+  .axis-list { display: flex; flex-direction: column; gap: 7px; }
+  .axis-row { display: grid; grid-template-columns: 88px 1fr 58px; align-items: center; gap: 9px; }
+  .axis-row .ax-label { font-size: 11.5px; color: var(--text-secondary); }
+  .axis-track { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .axis-track > i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+  .axis-row .ax-value { font-size: 11.5px; text-align: right; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; }
+  .axis-row .ax-value b { font-weight: 600; }
+  .axis-row .ax-value span { color: var(--text-muted); }
+
+  .note-list { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 4px;
+    font-size: 12px; color: var(--text-secondary); }
+  .col-verdict { width: 62px; }
+  .kv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kv { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+  .kv .kv-label { font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
+    text-transform: uppercase; color: var(--text-muted); }
+  .kv .kv-value { font-size: 14.5px; font-weight: 600; margin-top: 1px; }
+  .excluded-row td { opacity: 0.55; }
 </style>
 
 </head>
@@ -431,8 +533,8 @@
 <div class="page">
   <header class="masthead">
     <div class="masthead-left">
-      <span class="eyebrow">기술적 지표 교차확인 스크리닝</span>
-      <h1>반등 신호 스크리너</h1>
+      <span class="eyebrow" id="mast-eyebrow">기술적 지표 교차확인 스크리닝</span>
+      <h1 id="mast-title">반등 신호 스크리너</h1>
       <p class="subtitle" id="subtitle-text">스토캐스틱 슬로우(15,5,5)와 윌리엄스 %R이 <b>동시에</b> 과매도일 때만 신호로 인정합니다. 표준편차 스퀴즈·거래량·수급은 이미 신호가 난 종목의 순위를 매기는 보조 지표일 뿐, 단독으로는 점수에 반영되지 않습니다.</p>
     </div>
     <div class="masthead-meta">
@@ -442,6 +544,12 @@
     </div>
   </header>
 
+  <nav class="tabs" id="tab-bar" role="tablist" aria-label="스크리너 선택">
+    <button class="tab active" role="tab" aria-selected="true" data-tab="rebound">반등 신호 스크리너</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="baek">백 프레임 스크리너</button>
+  </nav>
+
+  <div class="panel" id="panel-rebound" role="tabpanel">
   <div class="disclaimer" id="load-status">데이터를 불러오는 중…</div>
   <section class="stat-row" id="stat-row"></section>
 
@@ -487,6 +595,62 @@
     <span>⚠</span>
     <div><strong>주의:</strong> 이 점수는 현재 과매도/과매수 상태를 여러 지표로 교차 확인한 결과이며 미래 수익을 예측하지 않습니다. 이동평균 골든/데드크로스는 신호 판정에 쓰이지 않았습니다. 매매 판단의 유일한 근거로 사용하지 마세요.</div>
   </div>
+
+  </div><!-- /panel-rebound -->
+
+  <div class="panel" id="panel-baek" role="tabpanel" hidden>
+    <div class="disclaimer" id="baek-load-status"><span>⏳</span><div>백 프레임 데이터를 불러오는 중…</div></div>
+    <section id="baek-regime"></section>
+    <section class="stat-row" id="baek-stat-row"></section>
+    <section id="baek-market"></section>
+
+    <section class="controls">
+      <div class="segmented" id="baek-filter-verdict">
+        <button data-value="ALL" class="active">전체</button>
+        <button data-value="후보">후보</button>
+        <button data-value="관찰">관찰</button>
+        <button data-value="제외">제외</button>
+      </div>
+      <div class="segmented" id="baek-filter-market">
+        <button data-value="ALL" class="active">KR + US</button>
+        <button data-value="KR">KR</button>
+        <button data-value="US">US</button>
+      </div>
+      <div class="result-count" id="baek-result-count"></div>
+    </section>
+
+    <section class="main-grid">
+      <div class="table-panel">
+        <div class="table-scroll">
+          <table id="baek-table">
+            <thead>
+              <tr>
+                <th class="col-rank">#</th>
+                <th class="col-name">종목</th>
+                <th class="col-verdict">판정</th>
+                <th class="col-score" data-sort="score">점수 <span class="arrow">↓</span></th>
+                <th class="col-num" data-sort="revenue_yoy">매출 <span class="arrow">↓</span></th>
+                <th class="col-num" data-sort="revenue_acceleration">기울기 <span class="arrow">↓</span></th>
+                <th class="col-num" data-sort="op_margin_delta">마진Δ <span class="arrow">↓</span></th>
+                <th class="col-num" data-sort="per">PER <span class="arrow">↓</span></th>
+                <th class="col-flags">경고</th>
+              </tr>
+            </thead>
+            <tbody id="baek-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <aside class="detail-panel" id="baek-detail"></aside>
+    </section>
+
+    <div class="disclaimer">
+      <span>⚠</span>
+      <div><strong>주의:</strong> 이 탭은 매크로(금리·유가)와 재무제표를 교차검증한 결과이며 미래 수익을
+      예측하지 않습니다. 재무 데이터는 yfinance/pykrx 무료 소스라 기업별 누락·지연이 있을 수 있고,
+      미국 종목은 과거 PER 시계열을 구할 수 없어 밸류에이션을 시장 중앙값 대비로만 평가합니다.
+      매매 판단의 유일한 근거로 사용하지 마세요.</div>
+    </div>
+  </div><!-- /panel-baek -->
 
   <footer class="page-footer">
     <span id="footer-left"></span>
@@ -1012,6 +1176,387 @@ function initDashboard(raw) {
           " — data.json이 같은 경로에 있는지 확인하세요.</div>";
       }
     });
+})();
+</script>
+
+
+<script>
+// 백 프레임 스크리너 탭. 기존 반등 스크리너 로직(initDashboard)과 완전히 분리돼 있고,
+// baek_data.json은 탭을 처음 열 때만 받아온다.
+(function () {
+  "use strict";
+
+  var AXIS_LABELS = {
+    revenue_growth: "매출 증가율",
+    growth_acceleration: "증가율 기울기",
+    margin_improvement: "마진 개선",
+    valuation_band: "밸류에이션",
+    roe_regime_axis: "ROE 레짐축"
+  };
+  var FLAG_LABELS = {
+    momentum_peaked: "증가율 둔화",
+    margin_squeeze: "마진 스퀴즈",
+    expensive: "밴드 상단",
+    deteriorating: "실적 훼손"
+  };
+  var TAB_META = {
+    rebound: null, // 최초 로드 시 실제 DOM에서 캡처한다
+    baek: {
+      eyebrow: "매크로 · 펀더멘털 교차검증",
+      title: "백 프레임 스크리너",
+      subtitle: "주가 = 이익(분자) ÷ [국채금리 + 위험프리미엄](분모). 분모는 시장 전체에 걸리는 곱수로, " +
+                "분자는 매출·기울기·마진·밸류에이션·ROE 다섯 축으로 채점합니다. " +
+                "<b>매출과 영업이익이 동반 감소하는 종목은 아무리 눌려 있어도 제외</b>합니다."
+    }
+  };
+
+  var data = null, loading = false;
+  var filterVerdict = "ALL", filterMarket = "ALL";
+  var sortKey = "score", sortDesc = true, selectedKey = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (v) {
+    return String(v == null ? "" : v).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  };
+  var num = function (v, digits, suffix) {
+    if (v === null || v === undefined || isNaN(v)) return "—";
+    return v.toFixed(digits === undefined ? 1 : digits) + (suffix || "");
+  };
+  var signed = function (v, digits, suffix) {
+    if (v === null || v === undefined || isNaN(v)) return "—";
+    return (v > 0 ? "+" : "") + v.toFixed(digits === undefined ? 1 : digits) + (suffix || "");
+  };
+  var keyOf = function (r) { return r.market + ":" + r.ticker; };
+  var verdictClass = function (v) { return v === "후보" ? "v-cand" : v === "관찰" ? "v-watch" : "v-out"; };
+
+  // ---------------------------------------------------------------- 탭 전환
+  var currentTab = "rebound";
+
+  // 반등 탭의 마스트헤드는 initDashboard의 renderSummary()가 나중에 덮어쓴다. 그래서 한 번만
+  // 캡처해 두면 탭을 되돌릴 때 옛 문구가 복원된다. 떠날 때마다 지금 화면 그대로를 다시 담는다.
+  function captureRebound() {
+    TAB_META.rebound = {
+      eyebrow: $("mast-eyebrow").innerHTML,
+      title: $("mast-title").innerHTML,
+      subtitle: $("subtitle-text").innerHTML
+    };
+  }
+
+  function switchTab(name) {
+    if (name === currentTab) return;
+    if (currentTab === "rebound") captureRebound();
+    currentTab = name;
+    var meta = TAB_META[name];
+    $("mast-eyebrow").innerHTML = meta.eyebrow;
+    $("mast-title").innerHTML = meta.title;
+    $("subtitle-text").innerHTML = meta.subtitle;
+
+    $("panel-rebound").hidden = name !== "rebound";
+    $("panel-baek").hidden = name !== "baek";
+    Array.prototype.forEach.call(document.querySelectorAll("#tab-bar .tab"), function (b) {
+      var on = b.dataset.tab === name;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    // 반등 탭의 기준시각 메타는 그 탭에서만 의미가 있다.
+    var meta2 = document.querySelector(".masthead-meta");
+    if (meta2) meta2.style.visibility = name === "rebound" ? "" : "hidden";
+
+    if (name === "baek" && !data && !loading) loadBaek();
+  }
+
+  function loadBaek() {
+    loading = true;
+    fetch("baek_data.json?v=" + Date.now(), { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        data = d;
+        loading = false;
+        var st = $("baek-load-status");
+        if (st) st.remove();
+        renderAll();
+      })
+      .catch(function (e) {
+        loading = false;
+        var st = $("baek-load-status");
+        if (st) {
+          st.innerHTML = "<span>⚠</span><div><strong>백 프레임 데이터를 불러오지 못했습니다.</strong> " +
+            esc(e.message) + " — <code>python export_baek.py</code>로 baek_data.json을 먼저 생성하세요.</div>";
+        }
+      });
+  }
+
+  // ------------------------------------------------------------ 레짐 배너
+  function renderRegime() {
+    var m = data.macro;
+    var cls = m.regime === "risk_off" ? "risk-off" : m.regime === "risk_on" ? "risk-on" : "neutral";
+    var metrics = [];
+
+    metrics.push({
+      label: "미 10년물",
+      value: num(m.us10y, 2, "%"),
+      sub: "기준선 " + num(m.us10y_threshold, 1, "%"),
+      over: m.us10y != null && m.us10y >= m.us10y_threshold
+    });
+    metrics.push({
+      label: "WTI 유가",
+      value: num(m.wti, 1, "$"),
+      sub: "경계 " + num(m.wti_warning, 0, "$") + "~" + num(m.wti_risk_off, 0, "$") +
+           (m.wti_change_pct == null ? "" : " · 1개월 " + signed(m.wti_change_pct, 1, "%")),
+      over: m.wti != null && m.wti >= m.wti_warning
+    });
+    metrics.push({
+      label: "CPI 기여 추정",
+      value: m.cpi_impact_low == null ? "—" : signed(m.cpi_impact_low, 2) + "~" + signed(m.cpi_impact_high, 2) + "%p",
+      sub: "유가 10%당 0.15~0.3%p",
+      over: m.cpi_impact_low != null && m.cpi_impact_low > 0
+    });
+    metrics.push({ label: "VIX", value: num(m.vix, 1), sub: "참고", over: false });
+
+    $("baek-regime").innerHTML =
+      '<div class="regime-banner ' + cls + '">' +
+        '<div class="regime-head">' +
+          '<div class="regime-eyebrow">분모 · 할인율 레짐</div>' +
+          '<div class="regime-name">' + esc(m.regime_label) + '</div>' +
+          '<div class="regime-mult">종목 점수에 <b>×' + m.multiplier.toFixed(2) + '</b> 적용 · 기준 ' + esc(m.generated_at) + '</div>' +
+        '</div>' +
+        '<div class="regime-metrics">' +
+          metrics.map(function (x) {
+            return '<div class="regime-metric' + (x.over ? " over" : "") + '">' +
+              '<div class="rm-label">' + esc(x.label) + '</div>' +
+              '<div class="rm-value num">' + esc(x.value) + '</div>' +
+              '<div class="rm-sub">' + esc(x.sub) + '</div></div>';
+          }).join("") +
+        '</div>' +
+        '<ul class="regime-notes">' + (m.notes || []).map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + '</ul>' +
+      '</div>';
+  }
+
+  // -------------------------------------------------------------- 요약 타일
+  function renderStats() {
+    var s = data.summary;
+    var tiles = [
+      { label: "후보", value: s.candidate_count, sub: "종목 점수 60점 이상", cls: "accent" },
+      { label: "관찰", value: s.watch_count, sub: "40~60점", cls: "" },
+      { label: "실적 훼손 제외", value: s.excluded_deteriorating, sub: "매출·영업이익 동반 감소", cls: "warn" },
+      { label: "증가율 둔화", value: s.momentum_peaked, sub: "기울기가 꺾인 종목", cls: "warn" },
+      { label: "분석 종목", value: s.total, sub: "KR " + s.kr_count + " · US " + s.us_count, cls: "" }
+    ];
+    $("baek-stat-row").innerHTML = tiles.map(function (t) {
+      return '<div class="stat-tile ' + t.cls + '">' +
+        '<div class="stat-label">' + esc(t.label) + '</div>' +
+        '<div class="stat-value num">' + t.value + '</div>' +
+        '<div class="stat-sub">' + esc(t.sub) + '</div></div>';
+    }).join("");
+  }
+
+  // ------------------------------------------------------- 시장 밸류에이션
+  function renderMarket() {
+    var items = [];
+    var iv = (data.index_valuation || {}).KR;
+    if (iv) {
+      var span = iv.band_high - iv.band_low;
+      var pos = span > 0 ? ((iv.per - iv.band_low) / span) * 100 : 0;
+      items.push(
+        '<div class="band-item">' +
+          '<div class="band-title">' + esc(iv.label) + ' PER</div>' +
+          '<div class="band-value num">' + num(iv.per, 2) + ' <span style="font-size:12px;color:var(--text-muted)">5년 밴드 ' + num(iv.percentile, 0) + '%</span></div>' +
+          '<div class="band-track"><div class="band-fill" style="width:' + pos.toFixed(1) + '%"></div>' +
+            '<div class="band-marker" style="left:calc(' + pos.toFixed(1) + '% - 1px)"></div></div>' +
+          '<div class="band-scale"><span>' + num(iv.band_low, 1) + '</span><span>' + esc(iv.source) + '</span><span>' + num(iv.band_high, 1) + '</span></div>' +
+        '</div>'
+      );
+    }
+    var ctx = data.market_context || {};
+    ["KR", "US"].forEach(function (mk) {
+      var c = ctx[mk];
+      if (!c || !c.per_median) return;
+      items.push(
+        '<div class="band-item">' +
+          '<div class="band-title">' + mk + ' 구성종목 PER 중앙값</div>' +
+          '<div class="band-value num">' + num(c.per_median, 1) + '</div>' +
+          '<div class="band-scale"><span>표본 ' + c.per_sample + '종목</span></div>' +
+        '</div>'
+      );
+    });
+    $("baek-market").innerHTML = items.length ? '<div class="band-card">' + items.join("") + '</div>' : "";
+  }
+
+  // ---------------------------------------------------------------- 테이블
+  function sortValue(r, key) {
+    if (key === "score") return r.score;
+    var f = r.fundamentals || {};
+    var v = f[key];
+    return v === null || v === undefined ? -Infinity : v;
+  }
+
+  function filtered() {
+    return data.results.filter(function (r) {
+      if (filterVerdict !== "ALL" && r.verdict !== filterVerdict) return false;
+      if (filterMarket !== "ALL" && r.market !== filterMarket) return false;
+      return true;
+    }).sort(function (a, b) {
+      var d = sortValue(b, sortKey) - sortValue(a, sortKey);
+      return sortDesc ? d : -d;
+    });
+  }
+
+  function renderTable() {
+    var rows = filtered();
+    var maxScore = data.summary.max_score || 100;
+    $("baek-result-count").innerHTML = "<b>" + rows.length + "</b>개 표시 / 전체 " + data.results.length + "개";
+
+    if (!rows.length) {
+      $("baek-tbody").innerHTML = '<tr class="empty-row"><td colspan="9">조건에 맞는 종목이 없습니다.</td></tr>';
+      renderDetail(null);
+      return;
+    }
+
+    $("baek-tbody").innerHTML = rows.map(function (r, i) {
+      var f = r.fundamentals || {};
+      var k = keyOf(r);
+      var pct = Math.max(0, Math.min(100, (r.score / maxScore) * 100));
+      var flags = (r.flags || []).map(function (fl) {
+        return '<span class="chip ' + (fl === "deteriorating" ? "warn" : "dim") + '">' + esc(FLAG_LABELS[fl] || fl) + "</span>";
+      }).join("");
+      return '<tr class="row' + (k === selectedKey ? " selected" : "") + (r.verdict === "제외" ? " excluded-row" : "") +
+        '" data-key="' + esc(k) + '" tabindex="0">' +
+        '<td class="col-rank num">' + (i + 1) + "</td>" +
+        '<td class="col-name"><div class="name-cell"><div class="name-main">' +
+          '<span class="flag">' + r.market + "</span>" + esc(r.name) +
+          '</div><div class="name-sub mono">' + esc(r.ticker) + (f.sector ? " · " + esc(f.sector) : "") + "</div></div></td>" +
+        '<td class="col-verdict"><span class="verdict-pill ' + verdictClass(r.verdict) + '">' + esc(r.verdict) + "</span></td>" +
+        '<td class="col-score"><div class="score-wrap"><div class="score-bar"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
+          '<span class="score-num num">' + r.score.toFixed(0) + "</span></div></td>" +
+        '<td class="col-num num">' + num(f.revenue_yoy, 0, "%") + "</td>" +
+        '<td class="col-num num">' + signed(f.revenue_acceleration, 0, "%p") + "</td>" +
+        '<td class="col-num num">' + signed(f.op_margin_delta, 1, "%p") + "</td>" +
+        '<td class="col-num num">' + num(f.per, 1) + "</td>" +
+        '<td class="col-flags"><div class="badge-row">' + flags + "</div></td>" +
+        "</tr>";
+    }).join("");
+
+    Array.prototype.forEach.call($("baek-tbody").querySelectorAll("tr.row"), function (tr) {
+      tr.addEventListener("click", function () { selectedKey = tr.dataset.key; renderTable(); });
+      tr.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectedKey = tr.dataset.key; renderTable(); }
+      });
+    });
+
+    var sel = rows.filter(function (r) { return keyOf(r) === selectedKey; })[0] || rows[0];
+    selectedKey = keyOf(sel);
+    renderDetail(sel);
+  }
+
+  // ------------------------------------------------------------- 상세 패널
+  function renderDetail(r) {
+    var el = $("baek-detail");
+    if (!r) { el.innerHTML = '<div class="no-series">표시할 종목이 없습니다.</div>'; return; }
+    var f = r.fundamentals || {};
+    var w = data.weights || {};
+
+    var axes = Object.keys(AXIS_LABELS).map(function (key) {
+      var got = (r.axes || {})[key];
+      var full = w[key] || 0;
+      if (got === undefined || got === null) got = 0;
+      var pct = full > 0 ? (got / full) * 100 : 0;
+      return '<div class="axis-row">' +
+        '<div class="ax-label">' + esc(AXIS_LABELS[key]) + "</div>" +
+        '<div class="axis-track"><i style="width:' + Math.max(0, Math.min(100, pct)).toFixed(1) + '%"></i></div>' +
+        '<div class="ax-value num"><b>' + got.toFixed(1) + "</b><span>/" + full.toFixed(0) + "</span></div>" +
+        "</div>";
+    }).join("");
+
+    var dupont = [
+      { label: "순이익률", value: num(f.net_margin, 1, "%") },
+      { label: "총자산회전율", value: num(f.asset_turnover, 2, "회") },
+      { label: "재무레버리지", value: num(f.leverage, 2, "배") }
+    ].map(function (x) {
+      return '<div class="kv"><div class="kv-label">' + esc(x.label) + '</div><div class="kv-value num">' + esc(x.value) + "</div></div>";
+    }).join("");
+
+    var excluded = r.exclude_reason
+      ? '<div class="chip warn" style="font-size:11px;padding:4px 9px">제외: ' + esc(r.exclude_reason) + "</div>"
+      : "";
+
+    el.innerHTML =
+      '<div class="detail-head">' +
+        '<div><div class="detail-title"><span class="dname">' + esc(r.name) + '</span>' +
+          '<span class="dticker mono">' + esc(r.market) + " " + esc(r.ticker) + "</span></div>" +
+          '<div class="detail-tags"><span class="verdict-pill ' + verdictClass(r.verdict) + '">' + esc(r.verdict) + "</span>" +
+          (f.sector ? '<span class="chip dim">' + esc(f.sector) + "</span>" : "") + excluded + "</div></div>" +
+        '<div class="detail-price"><div class="price-val num">' + r.score.toFixed(1) + "</div>" +
+          '<div class="price-date">종목점수 ' + (r.score_raw != null ? r.score_raw.toFixed(1) : "—") +
+          " × 레짐 " + (r.multiplier != null ? r.multiplier.toFixed(2) : "1.00") + "</div></div>" +
+      "</div>" +
+      '<div class="axis-list">' + axes + "</div>" +
+      '<div class="metric-grid">' +
+        '<div class="metric-cell"><div class="m-label">매출 YoY</div><div class="m-value num">' + num(f.revenue_yoy, 1, "%") + "</div></div>" +
+        '<div class="metric-cell"><div class="m-label">증가율 기울기</div><div class="m-value num">' + signed(f.revenue_acceleration, 1, "%p") + "</div></div>" +
+        '<div class="metric-cell"><div class="m-label">ROE</div><div class="m-value num">' + num(f.roe, 1, "%") + "</div></div>" +
+        '<div class="metric-cell"><div class="m-label">영업이익률</div><div class="m-value num">' + num(f.op_margin, 1, "%") + "</div></div>" +
+        '<div class="metric-cell"><div class="m-label">마진 변화</div><div class="m-value num">' + signed(f.op_margin_delta, 1, "%p") + "</div></div>" +
+        '<div class="metric-cell"><div class="m-label">PER</div><div class="m-value num">' + num(f.per, 1) +
+          (f.per_percentile != null ? ' <span style="font-size:11px;color:var(--text-muted)">' + num(f.per_percentile, 0) + "%</span>" : "") +
+          "</div></div>" +
+      "</div>" +
+      '<div class="kv-grid">' + dupont + "</div>" +
+      '<ul class="note-list">' + (r.notes || []).map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul>" +
+      '<div class="name-sub" style="font-size:11px">기준: 매출 ' + esc(f.basis || "—") +
+        (f.acceleration_basis ? " · 기울기 " + esc(f.acceleration_basis) : "") +
+        (f.margin_basis ? " · 마진 " + esc(f.margin_basis) : "") + "</div>";
+  }
+
+  function renderAll() {
+    renderRegime();
+    renderStats();
+    renderMarket();
+    renderTable();
+  }
+
+  // ----------------------------------------------------------------- 배선
+  function wireSegmented(id, setter) {
+    var box = $(id);
+    if (!box) return;
+    box.addEventListener("click", function (e) {
+      var btn = e.target.closest("button");
+      if (!btn) return;
+      Array.prototype.forEach.call(box.querySelectorAll("button"), function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      setter(btn.dataset.value);
+      if (data) renderTable();
+    });
+  }
+
+  $("tab-bar").addEventListener("click", function (e) {
+    var btn = e.target.closest(".tab");
+    if (btn) switchTab(btn.dataset.tab);
+  });
+  wireSegmented("baek-filter-verdict", function (v) { filterVerdict = v; });
+  wireSegmented("baek-filter-market", function (v) { filterMarket = v; });
+
+  var thead = document.querySelector("#baek-table thead");
+  if (thead) {
+    thead.addEventListener("click", function (e) {
+      var th = e.target.closest("th[data-sort]");
+      if (!th || !data) return;
+      var key = th.dataset.sort;
+      if (key === sortKey) sortDesc = !sortDesc;
+      else { sortKey = key; sortDesc = true; }
+      Array.prototype.forEach.call(thead.querySelectorAll("th[data-sort]"), function (h) {
+        h.classList.toggle("sorted", h === th);
+        var arrow = h.querySelector(".arrow");
+        if (arrow) arrow.textContent = h === th ? (sortDesc ? "↓" : "↑") : "↓";
+      });
+      renderTable();
+    });
+  }
 })();
 </script>
 

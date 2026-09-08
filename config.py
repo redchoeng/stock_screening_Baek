@@ -134,6 +134,79 @@ class UniverseConfig:
 
 
 @dataclass
+class MacroConfig:
+    """백찬규 프레임의 '분모' — 주가 = 이익 / (무위험이자율 + 위험프리미엄).
+
+    기존 반등 스크리너는 가격 오실레이터만 보므로 이 축이 아예 없다. 여기서 판정한 레짐은
+    종목 점수에 곱수로 적용된다(baek_scoring.py). 임계값은 전부 방송 시점 스냅샷이므로
+    하드코딩하지 않고 여기에 두고 바꿔 쓴다.
+    """
+    ust10y_symbol: str = "^TNX"    # 미 10년물 국채 금리 (%)
+    wti_symbol: str = "CL=F"       # WTI 유가 (달러)
+    vix_symbol: str = "^VIX"
+
+    ust10y_risk_off: float = 4.5   # "미 10년물 4.5% 돌파가 핵심 하방 변수"
+    ust10y_risk_on: float = 4.0
+    wti_warning: float = 85.0      # "유가 85~100불 도달 여부"
+    wti_risk_off: float = 100.0
+
+    # "유가가 10% 상승하면 미국 CPI는 0.15~0.3%p 상승"
+    oil_to_cpi_low: float = 0.15
+    oil_to_cpi_high: float = 0.30
+    oil_move_window_days: int = 21   # 유가 변동률을 볼 구간 (약 1개월)
+
+    # 레짐별 점수 곱수. 분모가 팽창 중이면 아무리 분자가 좋아도 주가는 눌린다.
+    multiplier_risk_off: float = 0.70
+    multiplier_neutral: float = 0.90
+    multiplier_risk_on: float = 1.00
+
+    cache_hours: float = 6.0
+
+
+@dataclass
+class FundamentalConfig:
+    """백찬규 프레임의 '분자' — 이익/매출/마진/ROE. 절대가격 함정 방어의 핵심."""
+    # "명목 성장률 = 실질 2.4% + 물가 3% ≒ 5.5~7% 하이싱글"이 어닝 서프라이즈 기준선
+    nominal_growth_base: float = 5.5
+    nominal_growth_high: float = 8.0
+    # "IT 기업은 명목 성장률의 2배 이상(최소 10%)을 내야 기립박수, 3배면 환호"
+    it_growth_multiplier: float = 2.0
+    it_cheer_multiplier: float = 3.0
+    it_sectors: tuple = ("Technology", "Communication Services")
+
+    per_band_years: int = 5          # PER 밴드 백분위 산출 구간
+    min_quarters: int = 5            # 매출 YoY 계산에 필요한 최소 분기 수
+    cache_hours: float = 168.0       # 재무는 분기 단위로만 바뀐다 -> 1주일
+
+
+@dataclass
+class BaekWeights:
+    """백 프레임 스크리너 배점 (합계 100). 매크로 레짐은 점수가 아니라 곱수로 적용된다."""
+    revenue_growth: float = 30.0        # 분자 핵심: 명목성장률 대비 매출 증가율
+    growth_acceleration: float = 20.0   # "애널리스트는 절대금액이 아니라 기울기를 본다"(미분)
+    margin_improvement: float = 15.0    # 마진 스퀴즈 방어
+    valuation_band: float = 15.0        # 자기 PER 밴드 내 위치
+    roe_regime_axis: float = 20.0       # 레짐별 듀퐁 주도 축
+
+
+@dataclass
+class BaekConfig:
+    macro: MacroConfig = field(default_factory=MacroConfig)
+    fundamental: FundamentalConfig = field(default_factory=FundamentalConfig)
+    weights: BaekWeights = field(default_factory=BaekWeights)
+    # 매출과 영업이익이 동반 감소 추세면 아무리 과매도여도 후보에서 제외한다.
+    # "35만원 하던 종목이 25만원 됐다고 싸다며 샀다가 1만7천원까지 폭락" — 절대가격 함정.
+    exclude_deteriorating_earnings: bool = True
+    # 후보/관찰 판정은 매크로 곱수를 적용하기 전의 '종목 자체 점수'로 한다.
+    # 분모(레짐)는 특정 종목의 실격 사유가 아니라 시장 전체에 걸리는 경고이므로,
+    # 곱수는 순위와 표시 점수에만 반영하고 판정선은 종목 품질로 긋는다.
+    candidate_score: float = 60.0
+    watch_score: float = 40.0
+    kr_limit: int = 100    # 종목당 yfinance 호출이 ~2.6초라 유니버스를 따로 제한한다
+    us_limit: int = 80
+
+
+@dataclass
 class ScreenerConfig:
     stochastic: StochasticConfig = field(default_factory=StochasticConfig)
     williams_r: WilliamsRConfig = field(default_factory=WilliamsRConfig)
@@ -144,6 +217,8 @@ class ScreenerConfig:
     weights: ScoringWeights = field(default_factory=ScoringWeights)
     credibility: CredibilityTierConfig = field(default_factory=CredibilityTierConfig)
     universe: UniverseConfig = field(default_factory=UniverseConfig)
+    # 백찬규 프레임 스크리너 전용 설정. 기존 반등 스크리너 동작에는 일절 영향을 주지 않는다.
+    baek: BaekConfig = field(default_factory=BaekConfig)
     # 핵심 AND 신호(스토캐+윌리엄스)를 어느 봉 기준으로 판정할지. 강의에서 "주봉이 더 신뢰도
     # 높다"고 명시했으므로 기본값은 weekly. "daily"로 바꾸면 일봉이 핵심 게이트가 되고 주봉은
     # 반대로 보조 확인(가점)이 된다. 자체 변동성/표준편차 스퀴즈/거래량은 요청서 원문이
