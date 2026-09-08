@@ -1340,9 +1340,12 @@ function initDashboard(raw) {
   // -------------------------------------------------------------- 요약 타일
   function renderStats() {
     var s = data.summary;
+    // 판정선은 config.baek에서 바뀌므로 데이터에 실려온 값을 그대로 쓴다.
+    var cand = s.candidate_score != null ? s.candidate_score : 60;
+    var watch = s.watch_score != null ? s.watch_score : 40;
     var tiles = [
-      { label: "후보", value: s.candidate_count, sub: "종목 점수 60점 이상", cls: "accent" },
-      { label: "관찰", value: s.watch_count, sub: "40~60점", cls: "" },
+      { label: "후보", value: s.candidate_count, sub: "종목 점수 " + cand + "점 이상", cls: "accent" },
+      { label: "관찰", value: s.watch_count, sub: watch + "~" + cand + "점", cls: "" },
       { label: "실적 훼손 제외", value: s.excluded_deteriorating, sub: "매출·영업이익 동반 감소", cls: "warn" },
       { label: "증가율 둔화", value: s.momentum_peaked, sub: "기울기가 꺾인 종목", cls: "warn" },
       { label: "분석 종목", value: s.total, sub: "KR " + s.kr_count + " · US " + s.us_count, cls: "" }

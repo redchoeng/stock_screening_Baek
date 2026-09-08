@@ -156,6 +156,9 @@ def run_baek(cfg, kr_limit: int, us_limit: int, use_cache: bool = True) -> dict:
         "momentum_peaked": sum(1 for r in results if "momentum_peaked" in r["flags"]),
         "margin_squeeze": sum(1 for r in results if "margin_squeeze" in r["flags"]),
         "max_score": max_possible_score(cfg.baek),
+        # 판정선은 config에서 바뀔 수 있으므로 대시보드가 문자열로 박아 쓰지 않도록 함께 내린다.
+        "candidate_score": cfg.baek.candidate_score,
+        "watch_score": cfg.baek.watch_score,
     }
 
     return {

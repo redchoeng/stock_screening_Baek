@@ -119,6 +119,10 @@ python config.py > screener_config.json
 후보/관찰 판정은 **곱수를 적용하기 전** 종목 자체 점수로 한다. 레짐은 특정 종목의 실격 사유가
 아니라 시장 전체 경고이므로, 곱수는 순위와 표시 점수에만 반영된다.
 
+판정선은 `config.baek.candidate_score`(기본 75) / `watch_score`(기본 40)이다. 60으로 두면
+180종목 중 77개가 후보로 잡혀 변별력이 없어서 75로 올렸다. 대시보드는 이 값을 데이터로 받아 표시하므로
+설정만 바꾸면 화면 문구도 따라간다.
+
 ```bash
 python export_baek.py                # 캐시 사용 (2회차부터 즉시)
 python export_baek.py --no-cache     # 재무 데이터 강제 재수집

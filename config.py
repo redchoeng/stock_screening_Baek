@@ -200,7 +200,7 @@ class BaekConfig:
     # 후보/관찰 판정은 매크로 곱수를 적용하기 전의 '종목 자체 점수'로 한다.
     # 분모(레짐)는 특정 종목의 실격 사유가 아니라 시장 전체에 걸리는 경고이므로,
     # 곱수는 순위와 표시 점수에만 반영하고 판정선은 종목 품질로 긋는다.
-    candidate_score: float = 60.0
+    candidate_score: float = 75.0
     watch_score: float = 40.0
     kr_limit: int = 100    # 종목당 yfinance 호출이 ~2.6초라 유니버스를 따로 제한한다
     us_limit: int = 80
